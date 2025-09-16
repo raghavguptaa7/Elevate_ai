@@ -1,1 +1,1 @@
-web: gunicorn app:app
+web: gunicorn Elevate_ai.app:app
