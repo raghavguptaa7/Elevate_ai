@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Error {{ error_code }} - Elevate.AI{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <div class="error-content">
+        <h1 class="error-code">{{ error_code }}</h1>
+        <h2 class="error-title">{{ error_message }}</h2>
+        
+        <p class="error-description">
+            {% if error_code == 404 %}
+                The page you're looking for doesn't exist or has been moved.
+            {% elif error_code == 500 %}
+                Something went wrong on our end. We're working to fix it.
+            {% else %}
+                An error occurred while processing your request.
+            {% endif %}
+        </p>
+        
+        <div class="error-actions">
+            <a href="/" class="btn btn-primary">Go to Homepage</a>
+            <button onclick="window.history.back()" class="btn btn-secondary">Go Back</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .error-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 70vh;
+        text-align: center;
+        padding: 2rem;
+    }
+    
+    .error-content {
+        max-width: 600px;
+    }
+    
+    .error-code {
+        font-size: 8rem;
+        font-weight: 700;
+        margin: 0;
+        color: var(--primary-color);
+        line-height: 1;
+    }
+    
+    .error-title {
+        font-size: 2rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .error-description {
+        font-size: 1.2rem;
+        margin-bottom: 2rem;
+        color: #666;
+    }
+    
+    .error-actions {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+    }
+    
+    @media (max-width: 768px) {
+        .error-code {
+            font-size: 6rem;
+        }
+        
+        .error-title {
+            font-size: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}

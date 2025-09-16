@@ -1,0 +1,50 @@
+# Elevate.AI - Requirements
+
+# Core dependencies
+Flask==2.3.3
+Werkzeug==2.3.7
+Jinja2==3.1.2
+MarkupSafe==2.1.3
+itsdangerous==2.1.2
+click==8.1.7
+
+# Database
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.21
+
+# Forms and validation
+WTForms==3.0.1
+Flask-WTF==1.1.1
+email-validator==2.0.0.post2
+bleach==6.0.0
+webencodings==0.5.1
+
+# File handling
+python-dotenv==1.0.0
+python-magic==0.4.27
+PyPDF2==3.0.1
+python-docx==1.0.1
+
+# API integration
+requests==2.31.0
+certifi==2023.7.22
+charset-normalizer==3.2.0
+idna==3.4
+urlopen==1.0.0
+urllib3==2.0.5
+
+# Security
+Flask-Login==0.6.2
+Flask-Bcrypt==1.0.1
+bcrypt==4.0.1
+
+# Logging
+pytz==2023.3
+
+# Web server
+gunicorn==21.2.0
+
+# Development and testing
+pytest==7.4.2
+pytest-flask==1.2.0
+flask-cors==4.0.0

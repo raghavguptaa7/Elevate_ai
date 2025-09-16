@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block title %}Syllabus Upload - Elevate.AI{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <h1>Smart Study Coach</h1>
+    <p>Upload your syllabus to get started with personalized study plans and quizzes</p>
+</section>
+
+<section class="syllabus-section">
+    <div id="syllabus-upload" class="upload-container">
+        <h2>Upload Your Syllabus</h2>
+        <form id="syllabus-form">
+            <div class="form-group">
+                <label for="subject">Subject</label>
+                <input type="text" id="subject" name="subject" placeholder="e.g., Computer Science, Biology, Economics" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="syllabus-content">Syllabus Content</label>
+                <textarea id="syllabus-content" name="syllabus_content" rows="10" placeholder="Paste your syllabus content here..."></textarea>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Parse Syllabus</button>
+            </div>
+        </form>
+    </div>
+    
+    <div id="syllabus-results" class="results-container hidden">
+        <div class="loading-indicator hidden">
+            <div class="spinner"></div>
+            <p>Processing your request...</p>
+        </div>
+        
+        <div class="results-content hidden">
+            <h2>Parsed Syllabus</h2>
+            
+            <div id="syllabus-topics" class="topics-container"></div>
+            
+            <div class="syllabus-actions">
+                <button id="create-quiz" class="btn btn-primary">Create Quiz</button>
+                <button id="create-plan" class="btn btn-secondary">Generate Study Plan</button>
+                <button id="view-progress" class="btn btn-tertiary">View Progress</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Quiz Modal -->
+<div id="quiz-modal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Create Quiz</h2>
+            <span class="close-modal">&times;</span>
+        </div>
+        
+        <div class="modal-body">
+            <form id="quiz-form">
+                <input type="hidden" id="quiz-syllabus-id" name="syllabus_id">
+                
+                <div class="form-group">
+                    <label for="quiz-difficulty">Difficulty</label>
+                    <select id="quiz-difficulty" name="difficulty">
+                        <option value="easy">Easy</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="quiz-num-questions">Number of Questions</label>
+                    <input type="number" id="quiz-num-questions" name="num_questions" min="3" max="20" value="5">
+                </div>
+                
+                <div class="form-group">
+                    <label for="quiz-topics">Topics (Optional)</label>
+                    <select id="quiz-topics" name="topics" multiple></select>
+                    <p class="help-text">Hold Ctrl/Cmd to select multiple topics, or leave empty for all topics</p>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Generate Quiz</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Study Plan Modal -->
+<div id="plan-modal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Generate Study Plan</h2>
+            <span class="close-modal">&times;</span>
+        </div>
+        
+        <div class="modal-body">
+            <form id="plan-form">
+                <input type="hidden" id="plan-syllabus-id" name="syllabus_id">
+                
+                <div class="form-group">
+                    <label for="plan-duration">Duration (Days)</label>
+                    <input type="number" id="plan-duration" name="duration_days" min="1" max="90" value="30">
+                </div>
+                
+                <div class="form-group">
+                    <label for="plan-hours">Hours per Day</label>
+                    <input type="number" id="plan-hours" name="hours_per_day" min="0.5" max="12" step="0.5" value="2">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Generate Plan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Elements
+    const syllabusForm = document.getElementById('syllabus-form');
+    const syllabusResults = document.getElementById('syllabus-results');
+    const loadingIndicator = document.querySelector('.loading-indicator');
+    const resultsContent = document.querySelector('.results-content');
+    const syllabusTopics = document.getElementById('syllabus-topics');
+    const createQuizBtn = document.getElementById('create-quiz');
+    const createPlanBtn = document.getElementById('create-plan');
+    const viewProgressBtn = document.getElementById('view-progress');
+    const quizModal = document.getElementById('quiz-modal');
+    const planModal = document.getElementById('plan-modal');
+    const quizForm = document.getElementById('quiz-form');
+    const planForm = document.getElementById('plan-form');
+    const quizSyllabusId = document.getElementById('quiz-syllabus-id');
+    const planSyllabusId = document.getElementById('plan-syllabus-id');
+    const quizTopicsSelect = document.getElementById('quiz-topics');
+    const closeModalBtns = document.querySelectorAll('.close-modal');
+    
+    // State
+    let syllabusId = null;
+    let parsedSyllabus = null;
+
+    // Handle syllabus upload
+    syllabusForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        syllabusResults.classList.remove('hidden');
+        loadingIndicator.classList.remove('hidden');
+        resultsContent.classList.add('hidden');
+
+        const formData = new FormData(syllabusForm);
+
+        fetch('/study/syllabus/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error: ' + data.error);
+                loadingIndicator.classList.add('hidden');
+                return;
+            }
+
+            syllabusId = data.syllabus_id;
+            parsedSyllabus = data.parsed_syllabus;
+
+            syllabusTopics.innerHTML = '';
+            quizTopicsSelect.innerHTML = '';
+
+            parsedSyllabus.topics.forEach(topic => {
+                const topicCard = document.createElement('div');
+                topicCard.className = 'topic-card';
+
+                const topicHeader = document.createElement('h3');
+                topicHeader.textContent = topic.name;
+
+                const subtopicsList = document.createElement('ul');
+                topic.subtopics.forEach(sub => {
+                    const li = document.createElement('li');
+                    li.textContent = sub;
+                    subtopicsList.appendChild(li);
+                });
+
+                const objectivesList = document.createElement('ul');
+                topic.learning_objectives.forEach(obj => {
+                    const li = document.createElement('li');
+                    li.textContent = obj;
+                    objectivesList.appendChild(li);
+                });
+
+                topicCard.appendChild(topicHeader);
+                topicCard.appendChild(subtopicsList);
+                topicCard.appendChild(objectivesList);
+                syllabusTopics.appendChild(topicCard);
+
+                const option = document.createElement('option');
+                option.value = topic.name;
+                option.textContent = topic.name;
+                quizTopicsSelect.appendChild(option);
+            });
+
+            // ✅ ensure hidden inputs are filled
+            quizSyllabusId.value = syllabusId;
+            planSyllabusId.value = syllabusId;
+
+            loadingIndicator.classList.add('hidden');
+            resultsContent.classList.remove('hidden');
+        })
+        .catch(err => {
+            console.error(err);
+            loadingIndicator.classList.add('hidden');
+            alert("Failed to parse syllabus.");
+        });
+    });
+
+    // Show modals
+    createQuizBtn.addEventListener('click', function() {
+        if (!syllabusId) {
+            alert("Upload syllabus first!");
+            return;
+        }
+        quizModal.classList.remove('hidden');
+    });
+    
+    createPlanBtn.addEventListener('click', function() {
+        if (!syllabusId) {
+            alert("Upload syllabus first!");
+            return;
+        }
+        planModal.classList.remove('hidden');
+    });
+
+    // View progress
+    viewProgressBtn.addEventListener('click', function() {
+        if (!syllabusId) {
+            alert("Upload syllabus first!");
+            return;
+        }
+        window.location.href = `/study/progress?syllabus_id=${syllabusId}`;
+    });
+
+    // Close modals
+    closeModalBtns.forEach(btn => btn.addEventListener('click', () => {
+        quizModal.classList.add('hidden');
+        planModal.classList.add('hidden');
+    }));
+
+    // Quiz form submit
+    quizForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        if (!syllabusId) {
+            alert("Upload syllabus first!");
+            return;
+        }
+
+        const formData = new FormData(quizForm);
+        formData.set('syllabus_id', syllabusId);  // ✅ ensure always present
+
+        const selectedTopics = Array.from(quizTopicsSelect.selectedOptions).map(o => o.value);
+        formData.set('topics', selectedTopics.length > 0 ? selectedTopics.join(',') : '');
+
+        loadingIndicator.classList.remove('hidden');
+        fetch('/study/quiz/generate', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("Network response was not ok");
+            return res.json();
+        })
+        .then(data => {
+            loadingIndicator.classList.add('hidden');
+            if (data.error) {
+                alert('Error: ' + data.error);
+                return;
+            }
+            if (!data.quiz_id) {
+                alert("Quiz generation failed.");
+                return;
+            }
+            window.location.href = `/study/quiz?syllabus_id=${syllabusId}&quiz_id=${data.quiz_id}`;
+        })
+        .catch(err => {
+            console.error(err);
+            loadingIndicator.classList.add('hidden');
+            alert("Error generating quiz. Please check if /study/quiz/generate is implemented on server.");
+        });
+    });
+
+    // Plan form submit
+    planForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        if (!syllabusId) {
+            alert("Upload syllabus first!");
+            return;
+        }
+
+        const formData = new FormData(planForm);
+        formData.set('syllabus_id', syllabusId);  // ✅ ensure always present
+
+        loadingIndicator.classList.remove('hidden');
+        fetch('/study/plan/generate', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("Network response was not ok");
+            return res.json();
+        })
+        .then(data => {
+            loadingIndicator.classList.add('hidden');
+            if (data.error) {
+                alert('Error: ' + data.error);
+                return;
+            }
+            if (!data.plan_id) {
+                alert("Plan generation failed.");
+                return;
+            }
+            window.location.href = `/study/plan?syllabus_id=${syllabusId}&plan_id=${data.plan_id}`;
+        })
+        .catch(err => {
+            console.error(err);
+            loadingIndicator.classList.add('hidden');
+            alert("Error generating plan. Please check if /study/plan/generate is implemented on server.");
+        });
+    });
+});
+</script>
+{% endblock %}

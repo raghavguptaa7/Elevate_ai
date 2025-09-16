@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Elevate AI{% endblock %}
+
+{% block content %}
+<section class="section auth-section">
+    <div class="container">
+        <div class="auth-container">
+            <div class="auth-card">
+                <h2 class="text-center">Welcome Back</h2>
+                <p class="text-center mb-4">Log in to continue your journey with Elevate AI</p>
+                
+                {% if error %}
+                <div class="alert alert-danger">
+                    {{ error }}
+                </div>
+                {% endif %}
+                
+                <form action="/login" method="post">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group form-check">
+                        <input type="checkbox" id="remember" name="remember" class="form-check-input">
+                        <label for="remember" class="form-check-label">Remember me</label>
+                        <a href="/forgot-password" class="float-right">Forgot password?</a>
+                    </div>
+                    
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-sign-in-alt"></i> Log In</button>
+                    </div>
+                </form>
+                
+                <div class="auth-footer">
+                    <p>Don't have an account? <a href="/register">Sign Up</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

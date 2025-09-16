@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block title %}Study Plan - Elevate.AI{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <h1>Personalized Study Plan</h1>
+    <p>Your customized day-by-day study schedule</p>
+</section>
+
+<section class="plan-section">
+    <div id="plan-loading" class="loading-container">
+        <div class="spinner"></div>
+        <p>Generating your study plan...</p>
+    </div>
+    
+    <div id="plan-container" class="plan-container hidden">
+        <div class="plan-header">
+            <h2 id="plan-subject">Subject</h2>
+            <div class="plan-duration">
+                <span id="plan-start-date">Start Date</span> to <span id="plan-end-date">End Date</span>
+                (<span id="plan-days">30</span> days)
+            </div>
+        </div>
+        
+        <div class="plan-content">
+            <div class="plan-filters">
+                <div class="filter-group">
+                    <label for="week-filter">Filter by Week:</label>
+                    <select id="week-filter">
+                        <option value="all">All Weeks</option>
+                        <!-- Week options will be populated here -->
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="topic-filter">Filter by Topic:</label>
+                    <select id="topic-filter">
+                        <option value="all">All Topics</option>
+                        <!-- Topic options will be populated here -->
+                    </select>
+                </div>
+            </div>
+            
+            <div id="plan-days-container" class="plan-days-container">
+                <!-- Plan days will be populated here -->
+            </div>
+        </div>
+        
+        <div class="plan-actions">
+            <button id="print-plan" class="btn btn-secondary">Print Plan</button>
+            <button id="back-to-syllabus" class="btn btn-tertiary">Back to Syllabus</button>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const syllabusId = urlParams.get('syllabus_id');
+        const durationDays = urlParams.get('duration_days') || 30;
+        const hoursPerDay = urlParams.get('hours_per_day') || 2;
+        
+        // Elements
+        const planLoading = document.getElementById('plan-loading');
+        const planContainer = document.getElementById('plan-container');
+        const planSubject = document.getElementById('plan-subject');
+        const planStartDate = document.getElementById('plan-start-date');
+        const planEndDate = document.getElementById('plan-end-date');
+        const planDays = document.getElementById('plan-days');
+        const weekFilter = document.getElementById('week-filter');
+        const topicFilter = document.getElementById('topic-filter');
+        const planDaysContainer = document.getElementById('plan-days-container');
+        const printPlanBtn = document.getElementById('print-plan');
+        const backToSyllabusBtn = document.getElementById('back-to-syllabus');
+        
+        // Plan state
+        let planId = null;
+        let planData = null;
+        let allTopics = new Set();
+        
+        // Initialize
+        loadPlan();
+        
+        // Event listeners
+        weekFilter.addEventListener('change', displayPlan);
+        topicFilter.addEventListener('change', displayPlan);
+        printPlanBtn.addEventListener('click', printPlan);
+        backToSyllabusBtn.addEventListener('click', function() {
+            window.location.href = `/syllabus?id=${syllabusId}`;
+        });
+        
+        // Get or generate plan
+        function loadPlan() {
+            // Show loading
+            planLoading.classList.remove('hidden');
+            planContainer.classList.add('hidden');
+            
+            // Check if plan_id is provided
+            const planId = urlParams.get('plan_id');
+            
+            if (planId) {
+                // Fetch existing plan
+                fetch(`/study/plan/get?plan_id=${planId}`)
+                    .then(response => response.json())
+                    .then(data => handlePlanData(data))
+                    .catch(error => {
+                        console.error('Error:', error);
+                        planLoading.classList.add('hidden');
+                        alert('An error occurred while loading the study plan. Please try again.');
+                    });
+            } else {
+                // Create form data for new plan
+                const formData = new FormData();
+                formData.append('syllabus_id', syllabusId);
+                formData.append('duration_days', durationDays);
+                formData.append('hours_per_day', hoursPerDay);
+                
+                // Send API request to generate new plan
+                fetch('/study/plan/generate', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => handlePlanData(data))
+                .catch(error => {
+                    console.error('Error:', error);
+                    planLoading.classList.add('hidden');
+                    alert('An error occurred while generating the study plan. Please try again.');
+                });
+            }
+        }
+        
+        // Handle plan data
+        function handlePlanData(data) {
+            if (data.error) {
+                alert('Error: ' + data.error);
+                planLoading.classList.add('hidden');
+                return;
+            }
+            
+            // Store plan data
+            planId = data.plan_id;
+            planData = data.plan;
+            planSubject.textContent = data.subject || "Study Plan";
+            
+            // Update UI
+            planDays.textContent = planData.plan ? planData.plan.length : durationDays;
+            
+            // Get first and last day dates
+            if (planData.plan && planData.plan.length > 0) {
+                const firstDay = planData.plan[0];
+                const lastDay = planData.plan[planData.plan.length - 1];
+                
+                planStartDate.textContent = formatDate(firstDay.date);
+                planEndDate.textContent = formatDate(lastDay.date);
+            }
+            
+            // Populate week filter
+            weekFilter.innerHTML = '<option value="all">All Weeks</option>';
+            
+            const totalWeeks = Math.ceil(planData.plan.length / 7);
+            for (let i = 1; i <= totalWeeks; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `Week ${i}`;
+                weekFilter.appendChild(option);
+            }
+            
+            // Collect all topics
+            allTopics = new Set();
+            planData.plan.forEach(day => {
+                day.topics.forEach(topic => {
+                    allTopics.add(topic);
+                });
+            });
+            
+            // Populate topic filter
+            topicFilter.innerHTML = '<option value="all">All Topics</option>';
+            
+            Array.from(allTopics).sort().forEach(topic => {
+                const option = document.createElement('option');
+                option.value = topic;
+                option.textContent = topic;
+                topicFilter.appendChild(option);
+            });
+            
+            // Display plan
+            displayPlan();
+            
+            // Show plan container
+            planLoading.classList.add('hidden');
+            planContainer.classList.remove('hidden');
+        }
+        
+        // Display plan based on filters
+        function displayPlan() {
+            const selectedWeek = weekFilter.value;
+            const selectedTopic = topicFilter.value;
+            
+            planDaysContainer.innerHTML = '';
+            
+            planData.plan.forEach((day, index) => {
+                // Apply week filter
+                const dayWeek = Math.floor(index / 7) + 1;
+                if (selectedWeek !== 'all' && dayWeek != selectedWeek) {
+                    return;
+                }
+                
+                // Apply topic filter
+                if (selectedTopic !== 'all' && !day.topics.includes(selectedTopic)) {
+                    return;
+                }
+                
+                // Create day card
+                const dayCard = document.createElement('div');
+                dayCard.className = 'day-card';
+                
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'day-header';
+                dayHeader.innerHTML = `
+                    <div class="day-number">Day ${day.day}</div>
+                    <div class="day-date">${formatDate(day.date)}</div>
+                    <div class="day-duration">${day.duration_hours} hours</div>
+                `;
+                
+                const dayTopics = document.createElement('div');
+                dayTopics.className = 'day-topics';
+                dayTopics.innerHTML = '<h4>Topics:</h4>';
+                
+                const topicsList = document.createElement('ul');
+                day.topics.forEach(topic => {
+                    const topicItem = document.createElement('li');
+                    topicItem.textContent = topic;
+                    
+                    // Highlight selected topic
+                    if (selectedTopic !== 'all' && topic === selectedTopic) {
+                        topicItem.classList.add('highlighted');
+                    }
+                    
+                    topicsList.appendChild(topicItem);
+                });
+                
+                dayTopics.appendChild(topicsList);
+                
+                const dayActivities = document.createElement('div');
+                dayActivities.className = 'day-activities';
+                dayActivities.innerHTML = '<h4>Activities:</h4>';
+                
+                const activitiesList = document.createElement('ul');
+                day.activities.forEach(activity => {
+                    const activityItem = document.createElement('li');
+                    activityItem.textContent = activity;
+                    activitiesList.appendChild(activityItem);
+                });
+                
+                dayActivities.appendChild(activitiesList);
+                
+                const dayResources = document.createElement('div');
+                dayResources.className = 'day-resources';
+                dayResources.innerHTML = '<h4>Resources:</h4>';
+                
+                const resourcesList = document.createElement('ul');
+                day.resources.forEach(resource => {
+                    const resourceItem = document.createElement('li');
+                    resourceItem.textContent = resource;
+                    resourcesList.appendChild(resourceItem);
+                });
+                
+                dayResources.appendChild(resourcesList);
+                
+                dayCard.appendChild(dayHeader);
+                dayCard.appendChild(dayTopics);
+                dayCard.appendChild(dayActivities);
+                dayCard.appendChild(dayResources);
+                
+                planDaysContainer.appendChild(dayCard);
+            });
+        }
+        
+        // Print plan
+        function printPlan() {
+            window.print();
+        }
+        
+        // Format date
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                weekday: 'short', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
+    });
+</script>
+{% endblock %}

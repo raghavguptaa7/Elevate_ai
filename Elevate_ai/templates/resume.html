@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Resume Analysis - Elevate.AI{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <h1>Resume Analysis & Job Fit</h1>
+    <p>Upload your resume and job description to get personalized feedback and alignment suggestions</p>
+</section>
+
+<section class="resume-analysis">
+    <div class="form-container">
+        <form id="resume-form">
+            <div class="form-group">
+                <label for="resume-file">Upload Your Resume</label>
+                <input type="file" id="resume-file" name="resume_file" accept=".pdf,.doc,.docx,.txt" class="file-input">
+                <p class="file-input-help">Supported formats: PDF, DOC, DOCX, TXT</p>
+            </div>
+            
+            <div class="form-group">
+                <label for="resume-text">Or Paste Resume Text</label>
+                <textarea id="resume-text" name="resume_text" rows="10" placeholder="Alternatively, paste your resume text here..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="job-description">Job Description</label>
+                <textarea id="job-description" name="job_description" rows="10" placeholder="Paste the job description here..."></textarea>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Analyze Resume</button>
+            </div>
+        </form>
+    </div>
+    
+    <div id="analysis-results" class="results-container hidden">
+        <div class="loading-indicator hidden">
+            <div class="spinner"></div>
+            <p>Analyzing your resume...</p>
+        </div>
+        
+        <div class="results-content hidden">
+            <h2>Analysis Results</h2>
+            
+            <div class="score-summary">
+                <div class="score-card">
+                    <h3>Resume Quality</h3>
+                    <div class="score-circle" id="quality-score">0</div>
+                    <p>Overall resume structure and formatting</p>
+                </div>
+                
+                <div class="score-card">
+                    <h3>Content Score</h3>
+                    <div class="score-circle" id="content-score">0</div>
+                    <p>Skills, experience, and qualifications</p>
+                </div>
+                
+                <div class="score-card">
+                    <h3>Job Fit</h3>
+                    <div class="score-circle" id="job-fit-score">0</div>
+                    <p>Alignment with job requirements</p>
+                </div>
+            </div>
+            
+            <div class="match-percentage">
+                <h3>Match Percentage</h3>
+                <div class="progress-bar">
+                    <div class="progress" id="match-progress"></div>
+                </div>
+                <p><span id="match-percentage">0</span>% match with job description</p>
+            </div>
+            
+            <div class="analysis-details">
+                <div class="strengths">
+                    <h3>Key Strengths</h3>
+                    <ul id="strengths-list"></ul>
+                </div>
+                
+                <div class="gaps">
+                    <h3>Identified Gaps</h3>
+                    <ul id="gaps-list"></ul>
+                </div>
+            </div>
+            
+            <div class="suggestions">
+                <h3>Improvement Suggestions</h3>
+                <ul id="suggestions-list"></ul>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const resumeForm = document.getElementById('resume-form');
+        const analysisResults = document.getElementById('analysis-results');
+        const loadingIndicator = document.querySelector('.loading-indicator');
+        const resultsContent = document.querySelector('.results-content');
+        
+        resumeForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Show loading indicator
+            analysisResults.classList.remove('hidden');
+            loadingIndicator.classList.remove('hidden');
+            resultsContent.classList.add('hidden');
+            
+            // Create FormData object to handle file uploads
+            const formData = new FormData(resumeForm);
+            
+            // Send API request
+            fetch('/career/resume/analyze', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading indicator
+                loadingIndicator.classList.add('hidden');
+                resultsContent.classList.remove('hidden');
+                
+                // Update scores
+                document.getElementById('quality-score').textContent = data.quality_score;
+                document.getElementById('content-score').textContent = data.content_score;
+                document.getElementById('job-fit-score').textContent = data.job_fit_score;
+                
+                // Update match percentage
+                const matchPercentage = data.match_percentage;
+                document.getElementById('match-percentage').textContent = matchPercentage;
+                document.getElementById('match-progress').style.width = matchPercentage + '%';
+                
+                // Update strengths
+                const strengthsList = document.getElementById('strengths-list');
+                strengthsList.innerHTML = '';
+                data.strengths.forEach(strength => {
+                    const li = document.createElement('li');
+                    li.textContent = strength;
+                    strengthsList.appendChild(li);
+                });
+                
+                // Update gaps
+                const gapsList = document.getElementById('gaps-list');
+                gapsList.innerHTML = '';
+                data.gaps.forEach(gap => {
+                    const li = document.createElement('li');
+                    li.textContent = gap;
+                    gapsList.appendChild(li);
+                });
+                
+                // Update suggestions
+                const suggestionsList = document.getElementById('suggestions-list');
+                suggestionsList.innerHTML = '';
+                data.suggestions.forEach(suggestion => {
+                    const li = document.createElement('li');
+                    li.textContent = suggestion;
+                    suggestionsList.appendChild(li);
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                loadingIndicator.classList.add('hidden');
+                alert('An error occurred while analyzing your resume. Please try again.');
+            });
+        });
+    });
+</script>
+{% endblock %}

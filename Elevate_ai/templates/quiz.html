@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz - Elevate.AI{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <h1>Adaptive Quiz</h1>
+    <p>Test your knowledge with personalized quizzes</p>
+</section>
+
+<section class="quiz-section">
+    <div id="quiz-loading" class="loading-container">
+        <div class="spinner"></div>
+        <p>Generating your quiz...</p>
+    </div>
+    
+    <div id="quiz-container" class="quiz-container hidden">
+        <div class="quiz-header">
+            <h2 id="quiz-subject">Subject</h2>
+            <div class="quiz-progress">
+                <span id="current-question">1</span> of <span id="total-questions">5</span>
+            </div>
+        </div>
+        
+        <div class="quiz-content">
+            <div id="question-container" class="question-container">
+                <div id="question-text" class="question-text"></div>
+                <div id="question-topic" class="question-topic"></div>
+                
+                <div id="options-container" class="options-container"></div>
+            </div>
+            
+            <div class="quiz-actions">
+                <button id="next-question" class="btn btn-primary" disabled>Next Question</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="quiz-results" class="results-container hidden">
+        <h2>Quiz Results</h2>
+        
+        <div class="score-summary">
+            <div class="score-circle large" id="quiz-score">0%</div>
+            <p><span id="correct-count">0</span> out of <span id="total-count">0</span> correct</p>
+        </div>
+        
+        <div id="results-breakdown" class="results-breakdown"></div>
+        
+        <div class="results-actions">
+            <button id="new-quiz" class="btn btn-primary">Create New Quiz</button>
+            <button id="view-progress" class="btn btn-secondary">View Progress</button>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        let syllabusId = urlParams.get('syllabus_id');
+        const difficulty = urlParams.get('difficulty') || 'medium';
+        const numQuestions = urlParams.get('num_questions') || 5;
+        const topics = urlParams.get('topics') || '';
+        const quizIdFromUrl = urlParams.get('quiz_id');
+        
+        const quizLoading = document.getElementById('quiz-loading');
+        const quizContainer = document.getElementById('quiz-container');
+        const quizResults = document.getElementById('quiz-results');
+        const quizSubject = document.getElementById('quiz-subject');
+        const currentQuestionEl = document.getElementById('current-question');
+        const totalQuestionsEl = document.getElementById('total-questions');
+        const questionText = document.getElementById('question-text');
+        const questionTopic = document.getElementById('question-topic');
+        const optionsContainer = document.getElementById('options-container');
+        const nextQuestion = document.getElementById('next-question');
+        const quizScore = document.getElementById('quiz-score');
+        const correctCount = document.getElementById('correct-count');
+        const totalCount = document.getElementById('total-count');
+        const resultsBreakdown = document.getElementById('results-breakdown');
+        const newQuizBtn = document.getElementById('new-quiz');
+        const viewProgressBtn = document.getElementById('view-progress');
+        
+        let quizId = null;
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let userAnswers = {};
+        
+        function generateQuiz() {
+            quizLoading.classList.remove('hidden');
+            quizContainer.classList.add('hidden');
+            quizResults.classList.add('hidden');
+            
+            if (quizIdFromUrl) {
+                fetch(`/study/quiz/get?quiz_id=${quizIdFromUrl}`)
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                             throw new Error(err.error || 'Quiz not found.');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                        quizLoading.classList.add('hidden');
+                        window.location.href = '/study/syllabus';
+                        return;
+                    }
+                    
+                    quizId = data.quiz_id;
+                    syllabusId = data.syllabus_id;
+                    questions = data.quiz.questions;
+                    currentQuestionIndex = 0;
+                    userAnswers = {};
+                    
+                    quizSubject.textContent = 'Quiz: ' + data.subject;
+                    totalQuestionsEl.textContent = questions.length;
+                    
+                    showQuestion(currentQuestionIndex);
+                    
+                    quizLoading.classList.add('hidden');
+                    quizContainer.classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    quizLoading.classList.add('hidden');
+                    alert('Error fetching quiz: ' + error.message);
+                    window.location.href = '/study/syllabus';
+                });
+            } else {
+                const formData = new FormData();
+                if (syllabusId) formData.append('syllabus_id', syllabusId);
+                if (difficulty) formData.append('difficulty', difficulty);
+                if (numQuestions) formData.append('num_questions', numQuestions);
+                if (topics) formData.append('topics', topics);
+                
+                fetch('/study/quiz/generate', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (response.status === 404) {
+                        return response.json().then(err => {
+                            throw new Error(err.error || 'Syllabus not found.');
+                        });
+                    }
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok.');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                        quizLoading.classList.add('hidden');
+                        window.location.href = '/study/syllabus';
+                        return;
+                    }
+                    
+                    quizId = data.quiz_id;
+                    questions = data.quiz.questions;
+                    currentQuestionIndex = 0;
+                    userAnswers = {};
+                    
+                    quizSubject.textContent = 'Quiz: ' + difficulty.charAt(0).toUpperCase() + difficulty.slice(1) + ' Difficulty';
+                    totalQuestionsEl.textContent = questions.length;
+                    
+                    showQuestion(currentQuestionIndex);
+                    
+                    quizLoading.classList.add('hidden');
+                    quizContainer.classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error: ' + error.message + ' Redirecting to syllabus page.');
+                    quizLoading.classList.add('hidden');
+                    window.location.href = '/study/syllabus';
+                });
+            }
+        }
+        
+        function showQuestion(index) {
+            const question = questions[index];
+            questionText.textContent = question.question;
+            questionTopic.textContent = 'Topic: ' + question.topic;
+            currentQuestionEl.textContent = index + 1;
+            
+            optionsContainer.innerHTML = '';
+            
+            question.options.forEach((option, i) => {
+                const optionLabel = option.includes('.') ? option.split('.')[0] : String.fromCharCode(65 + i);
+                const optionText = option.includes('.') ? option.substring(option.indexOf('.') + 1).trim() : option;
+                
+                const optionDiv = document.createElement('div');
+                optionDiv.className = 'option';
+                optionDiv.dataset.value = optionLabel;
+                
+                const radioInput = document.createElement('input');
+                radioInput.type = 'radio';
+                radioInput.name = 'question-' + question.id;
+                radioInput.id = 'option-' + question.id + '-' + i;
+                radioInput.value = optionLabel;
+                
+                const labelEl = document.createElement('label');
+                labelEl.htmlFor = radioInput.id;
+                labelEl.innerHTML = `<span class="option-label">${optionLabel}</span> ${optionText}`;
+                
+                optionDiv.appendChild(radioInput);
+                optionDiv.appendChild(labelEl);
+                
+                optionsContainer.appendChild(optionDiv);
+                
+                optionDiv.addEventListener('click', function() {
+                    radioInput.checked = true;
+                    
+                    document.querySelectorAll('.option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    
+                    optionDiv.classList.add('selected');
+                    
+                    nextQuestion.disabled = false;
+                });
+            });
+            
+            nextQuestion.disabled = true;
+        }
+        
+        nextQuestion.addEventListener('click', function() {
+            const selectedOption = document.querySelector('input[name="question-' + questions[currentQuestionIndex].id + '"]:checked');
+            
+            if (selectedOption) {
+                userAnswers[questions[currentQuestionIndex].id] = selectedOption.value;
+                
+                currentQuestionIndex++;
+                
+                if (currentQuestionIndex < questions.length) {
+                    showQuestion(currentQuestionIndex);
+                } else {
+                    submitQuiz();
+                }
+            }
+        });
+        
+        function submitQuiz() {
+            quizLoading.classList.remove('hidden');
+            quizContainer.classList.add('hidden');
+            
+            fetch('/study/quiz/submit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    quiz_id: quizId,
+                    answers: userAnswers
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    quizLoading.classList.add('hidden');
+                    return;
+                }
+                
+                const scorePercentage = Math.round(data.score * 100);
+                quizScore.textContent = scorePercentage + '%';
+                correctCount.textContent = data.correct_count;
+                totalCount.textContent = data.total_questions;
+                
+                resultsBreakdown.innerHTML = '';
+                
+                data.questions_with_explanations.forEach(question => {
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'result-item ' + (question.is_correct ? 'correct' : 'incorrect');
+                    
+                    resultItem.innerHTML = `
+                        <div class="result-question"><strong>Q${question.id}:</strong> ${question.question}</div>
+                        <div class="result-answer"><strong>Your Answer:</strong> ${question.user_answer} | <strong>Correct Answer:</strong> ${question.correct_answer}</div>
+                        <div class="result-status">
+                            ${question.is_correct ? '<span class="status-badge correct">Correct</span>' : '<span class="status-badge incorrect">Incorrect</span>'}
+                        </div>
+                        <div class="result-explanation"><strong>Explanation:</strong> ${question.explanation}</div>
+                        <div class="result-topic"><strong>Topic:</strong> ${question.topic}</div>
+                    `;
+                    
+                    resultsBreakdown.appendChild(resultItem);
+                });
+                
+                quizLoading.classList.add('hidden');
+                quizResults.classList.remove('hidden');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                quizLoading.classList.add('hidden');
+                alert('An error occurred while submitting the quiz. Please try again.');
+            });
+        }
+        
+        newQuizBtn.addEventListener('click', function() {
+            window.location.href = '/study/syllabus';
+        });
+        
+        viewProgressBtn.addEventListener('click', function() {
+            window.location.href = `/study/progress?syllabus_id=${syllabusId}`;
+        });
+        
+        if (syllabusId || quizIdFromUrl) {
+            generateQuiz();
+        } else {
+            alert('No syllabus or quiz ID selected. Redirecting to syllabus page.');
+            window.location.href = '/study/syllabus';
+        }
+    });
+</script>
+{% endblock %}

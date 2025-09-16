@@ -1,0 +1,214 @@
+ {% extends "base.html" %}
+
+{% block title %}Elevate AI - Your Career and Study Coach{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="container">
+        <div class="hero-content">
+            <h2 class="fade-in">Elevate Your Career & Studies with AI</h2>
+            <p class="fade-in delay-1">Personalized AI coaching to help you excel in your career and academic pursuits</p>
+            <div class="btn-group fade-in delay-2">
+                <a href="/career/resume" class="btn btn-primary"><i class="fas fa-briefcase"></i> Career Coach</a>
+                <a href="/study/syllabus" class="btn btn-secondary"><i class="fas fa-graduation-cap"></i> Study Coach</a>
+            </div>
+            {% if not session.get('user_id') %}
+            <div class="login-register-links fade-in delay-3">
+                <a href="/login" class="link-light"><i class="fas fa-sign-in-alt"></i> Login</a>
+                <span class="separator">|</span>
+                <a href="/register" class="link-light"><i class="fas fa-user-plus"></i> Register</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        <div class="section-title animate-on-scroll">
+            <h3>How Elevate AI Can Help You</h3>
+            <p>Our AI-powered platform offers personalized guidance for both career advancement and academic success</p>
+        </div>
+        
+        <div class="card-grid">
+            <div class="card feature-card animate-on-scroll">
+                <div class="card-content">
+                    <div class="card-icon"><i class="fas fa-file-alt"></i></div>
+                    <h4 class="card-title">Resume Enhancement</h4>
+                    <p class="card-text">Get personalized feedback on your resume to make it stand out to employers and increase your chances of landing interviews.</p>
+                    <div class="card-footer">
+                        <a href="/career/resume" class="card-link">Enhance your resume <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card feature-card animate-on-scroll">
+                <div class="card-content">
+                    <div class="card-icon"><i class="fas fa-bullseye"></i></div>
+                    <h4 class="card-title">Job Fit Analysis</h4>
+                    <p class="card-text">Analyze how well your skills and experience match job descriptions and get recommendations to improve your fit.</p>
+                    <div class="card-footer">
+                        <a href="/career/resume" class="card-link">Analyze job fit <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card feature-card animate-on-scroll">
+                <div class="card-content">
+                    <div class="card-icon"><i class="fas fa-comments"></i></div>
+                    <h4 class="card-title">Interview Preparation</h4>
+                    <p class="card-text">Practice with AI-simulated interviews tailored to your target roles and receive feedback to improve your responses.</p>
+                    <div class="card-footer">
+                        <a href="/career/interview" class="card-link">Practice interviews <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card feature-card animate-on-scroll">
+                <div class="card-content">
+                    <div class="card-icon"><i class="fas fa-book"></i></div>
+                    <h4 class="card-title">Study Planning</h4>
+                    <p class="card-text">Create effective study plans based on your learning style, goals, and available time to maximize your learning efficiency.</p>
+                    <div class="card-footer">
+                        <a href="/study/plan" class="card-link">Create study plan <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card feature-card animate-on-scroll">
+                <div class="card-content">
+                    <div class="card-icon"><i class="fas fa-question-circle"></i></div>
+                    <h4 class="card-title">Quiz Generation</h4>
+                    <p class="card-text">Generate custom quizzes to test your knowledge, identify gaps, and reinforce learning through active recall.</p>
+                    <div class="card-footer">
+                        <a href="/study/quiz" class="card-link">Generate quizzes <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card feature-card animate-on-scroll">
+                <div class="card-content">
+                    <div class="card-icon"><i class="fas fa-chart-line"></i></div>
+                    <h4 class="card-title">Progress Tracking</h4>
+                    <p class="card-text">Monitor your improvement over time with detailed analytics and insights to keep you motivated and on track.</p>
+                    <div class="card-footer">
+                        <a href="/career/interview/feedback" class="card-link">Track progress <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section section-alt how-it-works-section">
+    <div class="container">
+        <h2 class="text-center fade-in">How It Works</h2>
+        <p class="section-description text-center fade-in">Follow these simple steps to get started with Elevate AI</p>
+        <div class="steps">
+            <div class="step slide-in-left" data-delay="100">
+                <div class="step-number">1</div>
+                <h4>Create an Account</h4>
+                <p>Sign up for free and set up your profile with your goals and preferences.</p>
+            </div>
+            <div class="step slide-in-left" data-delay="200">
+                <div class="step-number">2</div>
+                <h4>Choose Your Path</h4>
+                <p>Select between Career Readiness or Smart Study coaching based on your needs.</p>
+            </div>
+            <div class="step slide-in-left" data-delay="300">
+                <div class="step-number">3</div>
+                <h4>Get Personalized Guidance</h4>
+                <p>Receive AI-powered recommendations and feedback tailored to your goals.</p>
+            </div>
+        </div>
+        <!-- <div class="text-center mt-5 fade-in" data-delay="400">
+            <a href="/register" class="btn btn-primary"><i class="fas fa-rocket"></i> Get Started Now</a>
+        </div> -->
+    </div>
+</section>
+
+<section class="section testimonials-section">
+    <div class="container">
+        <h2 class="text-center fade-in">What Our Users Say</h2>
+        <p class="section-description text-center fade-in">Hear from students and professionals who have transformed their careers and studies</p>
+        
+        <div class="testimonials">
+            <div class="testimonial-card slide-in-right" data-delay="100">
+                <div class="testimonial-content">
+                    <div class="testimonial-quote">
+                        <i class="fas fa-quote-left"></i>
+                        <p>Elevate AI helped me completely revamp my resume and prepare for interviews. I landed my dream job at a tech company within a month!</p>
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="testimonial-info">
+                            <h5>Nitish Tyagi</h5>
+                            <p>Software Developer</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="testimonial-card slide-in-right" data-delay="200">
+                <div class="testimonial-content">
+                    <div class="testimonial-quote">
+                        <i class="fas fa-quote-left"></i>
+                        <p>The study planning feature is incredible! It helped me organize my exam preparation and I improved my grades significantly this semester.</p>
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="testimonial-info">
+                            <h5>Shubham Jain</h5>
+                            <p>Graduate Student</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="testimonial-card slide-in-right" data-delay="300">
+                <div class="testimonial-content">
+                    <div class="testimonial-quote">
+                        <i class="fas fa-quote-left"></i>
+                        <p>The job fit analysis gave me insights I never would have considered. It helped me target positions that truly matched my skills and interests.</p>
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="testimonial-info">
+                            <h5>Nikhil Sharma</h5>
+                            <p>Marketing Specialist</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-5 fade-in" data-delay="400">
+            <a href="" class="btn btn-outline"><i class="fas fa-star"></i> Read More Success Stories</a>
+        </div>
+    </div>
+</section>
+
+<section class="section cta-section" id="cta-section">
+    <div class="container">
+        {% if not session.get('user_id') %}
+        <div class="cta-content fade-in">
+            <h2>Ready to Elevate Your Potential?</h2>
+            <p>Join thousands of students and professionals who are achieving their goals faster with AI-powered coaching.</p>
+            <div class="btn-group">
+                <a href="/register" class="btn btn-primary"><i class="fas fa-user-plus"></i> Sign Up Free</a>
+                <a href="/register" class="btn btn-outline"><i class="fas fa-info-circle"></i> Learn More</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %} 
+
+
+ 

@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}Mock Interview - Elevate.AI{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <h1>Mock Interview Practice</h1>
+    <p>Practice with AI-powered interviews tailored to your target position</p>
+</section>
+
+<section class="interview-section">
+    <div id="interview-setup" class="setup-container">
+        <h2>Set Up Your Interview</h2>
+        <form id="interview-form">
+            <div class="form-group">
+                <label for="job-title">Job Title</label>
+                <input type="text" id="job-title" name="job_title" placeholder="e.g., Software Engineer, Marketing Manager" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="experience-level">Experience Level</label>
+                <select id="experience-level" name="experience_level">
+                    <option value="entry">Entry Level (0-2 years)</option>
+                    <option value="mid" selected>Mid Level (3-5 years)</option>
+                    <option value="senior">Senior Level (6+ years)</option>
+                </select>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Start Interview</button>
+            </div>
+        </form>
+    </div>
+    
+    <div id="interview-session" class="interview-container hidden">
+        <div class="interview-header">
+            <h2 id="interview-position">Interview for: Position</h2>
+            <div class="interview-progress">
+                <span id="current-question">1</span> of <span id="total-questions">5</span>
+            </div>
+        </div>
+        
+        <div class="interview-content">
+            <div class="question-container">
+                <div class="question-label">Question:</div>
+                <div id="question-text" class="question-text"></div>
+                <div id="question-type" class="question-type"></div>
+            </div>
+            
+            <div class="answer-container">
+                <div class="answer-label">Your Answer:</div>
+                <textarea id="answer-text" rows="10" placeholder="Type your answer here..." class="large-textarea"></textarea>
+                <div class="answer-actions">
+                    <button id="submit-answer" class="btn btn-primary">Submit Answer</button>
+                    <button id="skip-question" class="btn btn-secondary">Skip Question</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="interview-complete" class="complete-container hidden">
+        <h2>Interview Complete!</h2>
+        <p>You've completed all the questions. Would you like to get feedback on your answers?</p>
+        <div class="complete-actions">
+            <button id="get-feedback" class="btn btn-primary">Get Feedback</button>
+            <button id="restart-interview" class="btn btn-secondary">Start New Interview</button>
+        </div>
+    </div>
+    
+    <div id="interview-feedback" class="feedback-container hidden">
+        <div class="loading-indicator hidden">
+            <div class="spinner"></div>
+            <p>Analyzing your interview responses...</p>
+        </div>
+        
+        <div class="feedback-content hidden">
+            <h2>Interview Feedback</h2>
+            
+            <div class="overall-score">
+                <h3>Overall Score</h3>
+                <div class="score-circle large" id="overall-score">0</div>
+                <p id="overall-impression"></p>
+            </div>
+            
+            <div class="feedback-summary">
+                <div class="strengths">
+                    <h3>Strengths</h3>
+                    <ul id="strengths-list"></ul>
+                </div>
+                
+                <div class="improvements">
+                    <h3>Areas for Improvement</h3>
+                    <ul id="improvements-list"></ul>
+                </div>
+            </div>
+            
+            <div class="detailed-feedback">
+                <h3>Question-by-Question Feedback</h3>
+                <div id="detailed-feedback-list"></div>
+            </div>
+            
+            <div class="feedback-actions">
+                <button id="new-interview" class="btn btn-primary">Start New Interview</button>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Elements
+        const interviewSetup = document.getElementById('interview-setup');
+        const interviewSession = document.getElementById('interview-session');
+        const interviewComplete = document.getElementById('interview-complete');
+        const interviewFeedback = document.getElementById('interview-feedback');
+        const interviewForm = document.getElementById('interview-form');
+        const interviewPosition = document.getElementById('interview-position');
+        const currentQuestionEl = document.getElementById('current-question');
+        const totalQuestionsEl = document.getElementById('total-questions');
+        const questionText = document.getElementById('question-text');
+        const questionType = document.getElementById('question-type');
+        const answerText = document.getElementById('answer-text');
+        const submitAnswer = document.getElementById('submit-answer');
+        const skipQuestion = document.getElementById('skip-question');
+        const getFeedback = document.getElementById('get-feedback');
+        const restartInterview = document.getElementById('restart-interview');
+        const newInterview = document.getElementById('new-interview');
+        const loadingIndicator = document.querySelector('.loading-indicator');
+        const feedbackContent = document.querySelector('.feedback-content');
+        
+        // Interview state
+        let interviewId = null;
+        let questions = [];
+        let currentQuestionIndex = 0;
+        
+        // Start interview
+        interviewForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(interviewForm);
+            
+            fetch('/career/interview/start', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+                
+                interviewId = data.interview_id;
+                questions = data.questions;
+                currentQuestionIndex = 0;
+                
+                // Update UI
+                interviewPosition.textContent = 'Interview for: ' + formData.get('job_title');
+                totalQuestionsEl.textContent = questions.length;
+                
+                // Show first question
+                showQuestion(currentQuestionIndex);
+                
+                // Switch to interview session view
+                interviewSetup.classList.add('hidden');
+                interviewSession.classList.remove('hidden');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while starting the interview. Please try again.');
+            });
+        });
+        
+        // Show question
+        function showQuestion(index) {
+            const question = questions[index];
+            questionText.textContent = question.question;
+            questionType.textContent = question.type.charAt(0).toUpperCase() + question.type.slice(1);
+            currentQuestionEl.textContent = index + 1;
+            answerText.value = '';
+        }
+        
+        // Submit answer
+        submitAnswer.addEventListener('click', function() {
+            const answer = answerText.value.trim();
+            
+            if (!answer) {
+                alert('Please provide an answer or skip the question.');
+                return;
+            }
+            
+            const question = questions[currentQuestionIndex];
+            
+            fetch('/career/interview/answer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    interview_id: interviewId,
+                    question_id: question.id,
+                    answer: answer
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+                
+                // Move to next question or complete
+                currentQuestionIndex++;
+                
+                if (currentQuestionIndex < questions.length) {
+                    showQuestion(currentQuestionIndex);
+                } else {
+                    // Interview complete
+                    interviewSession.classList.add('hidden');
+                    interviewComplete.classList.remove('hidden');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while submitting your answer. Please try again.');
+            });
+        });
+        
+        // Skip question
+        skipQuestion.addEventListener('click', function() {
+            // Move to next question or complete
+            currentQuestionIndex++;
+            
+            if (currentQuestionIndex < questions.length) {
+                showQuestion(currentQuestionIndex);
+            } else {
+                // Interview complete
+                interviewSession.classList.add('hidden');
+                interviewComplete.classList.remove('hidden');
+            }
+        });
+        
+        // Get feedback
+        getFeedback.addEventListener('click', function() {
+            interviewComplete.classList.add('hidden');
+            interviewFeedback.classList.remove('hidden');
+            loadingIndicator.classList.remove('hidden');
+            feedbackContent.classList.add('hidden');
+            
+            const formData = new FormData();
+            formData.append('interview_id', interviewId);
+            
+            fetch('/career/interview/feedback', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    loadingIndicator.classList.add('hidden');
+                    return;
+                }
+                
+                // Get the feedback data from the response
+                const feedbackData = data.feedback;
+                
+                // Update feedback UI
+                document.getElementById('overall-score').textContent = feedbackData.overall_score;
+                document.getElementById('overall-impression').textContent = feedbackData.overall_impression;
+                
+                // Update strengths
+                const strengthsList = document.getElementById('strengths-list');
+                strengthsList.innerHTML = '';
+                feedbackData.strengths.forEach(strength => {
+                    const li = document.createElement('li');
+                    li.textContent = strength;
+                    strengthsList.appendChild(li);
+                });
+                
+                // Update improvements
+                const improvementsList = document.getElementById('improvements-list');
+                improvementsList.innerHTML = '';
+                feedbackData.improvements.forEach(improvement => {
+                    const li = document.createElement('li');
+                    li.textContent = improvement;
+                    improvementsList.appendChild(li);
+                });
+                
+                // Update detailed feedback
+                const detailedFeedbackList = document.getElementById('detailed-feedback-list');
+                detailedFeedbackList.innerHTML = '';
+                
+                feedbackData.detailed_feedback.forEach(feedback => {
+                    const questionIndex = feedback.question_id - 1;
+                    const question = questions[questionIndex];
+                    
+                    const feedbackItem = document.createElement('div');
+                    feedbackItem.className = 'feedback-item';
+                    
+                    const questionDiv = document.createElement('div');
+                    questionDiv.className = 'feedback-question';
+                    questionDiv.innerHTML = `<strong>Q${feedback.question_id}:</strong> ${question.question}`;
+                    
+                    const scoreDiv = document.createElement('div');
+                    scoreDiv.className = 'feedback-score';
+                    scoreDiv.innerHTML = `<span class="score-badge">Score: ${feedback.score}/10</span>`;
+                    
+                    const feedbackDiv = document.createElement('div');
+                    feedbackDiv.className = 'feedback-text';
+                    feedbackDiv.textContent = feedback.feedback;
+                    
+                    feedbackItem.appendChild(questionDiv);
+                    feedbackItem.appendChild(scoreDiv);
+                    feedbackItem.appendChild(feedbackDiv);
+                    
+                    detailedFeedbackList.appendChild(feedbackItem);
+                });
+                
+                // Show feedback content
+                loadingIndicator.classList.add('hidden');
+                feedbackContent.classList.remove('hidden');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while getting feedback. Please try again.');
+                loadingIndicator.classList.add('hidden');
+            });
+        });
+        
+        // Restart interview
+        restartInterview.addEventListener('click', function() {
+            interviewComplete.classList.add('hidden');
+            interviewSetup.classList.remove('hidden');
+        });
+        
+        // New interview after feedback
+        newInterview.addEventListener('click', function() {
+            interviewFeedback.classList.add('hidden');
+            interviewSetup.classList.remove('hidden');
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block title %}Progress Tracking - Elevate.AI{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <h1>Learning Progress Tracker</h1>
+    <p>Track your learning journey and see your improvement over time</p>
+</section>
+
+<section class="progress-section">
+    <div id="progress-loading" class="loading-container">
+        <div class="spinner"></div>
+        <p>Loading your progress data...</p>
+    </div>
+    
+    <div id="progress-container" class="progress-container hidden">
+        <div class="progress-header">
+            <h2 id="progress-subject">Subject Progress</h2>
+            <div class="progress-filters">
+                <div class="filter-group">
+                    <label for="subject-filter">Subject:</label>
+                    <select id="subject-filter">
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="date-range">Time Period:</label>
+                    <select id="date-range">
+                        <option value="7">Last 7 Days</option>
+                        <option value="30" selected>Last 30 Days</option>
+                        <option value="90">Last 3 Months</option>
+                        <option value="all">All Time</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div class="progress-overview">
+            <div class="progress-card">
+                <div class="progress-card-title">Overall Mastery</div>
+                <div class="progress-card-value" id="overall-mastery">0%</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="overall-mastery-bar" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="progress-card">
+                <div class="progress-card-title">Quizzes Completed</div>
+                <div class="progress-card-value" id="quizzes-completed">0</div>
+            </div>
+            
+            <div class="progress-card">
+                <div class="progress-card-title">Study Hours</div>
+                <div class="progress-card-value" id="study-hours">0</div>
+            </div>
+            
+            <div class="progress-card">
+                <div class="progress-card-title">Topics Mastered</div>
+                <div class="progress-card-value" id="topics-mastered">0/0</div>
+            </div>
+        </div>
+        
+        <div class="progress-details">
+            <div class="progress-chart-container">
+                <h3>Mastery Progress Over Time</h3>
+                <div id="mastery-chart" class="chart-placeholder">
+                    <div class="chart-message">Chart will appear here</div>
+                </div>
+            </div>
+            
+            <div class="topic-mastery-container">
+                <h3>Topic Mastery Breakdown</h3>
+                <div id="topic-mastery-list" class="topic-mastery-list">
+                </div>
+            </div>
+        </div>
+        
+        <div class="weak-topics-container">
+            <h3>Recommended Focus Areas</h3>
+            <p>Based on your quiz performance, we recommend focusing on these topics:</p>
+            <div id="weak-topics-list" class="weak-topics-list">
+            </div>
+        </div>
+        
+        <div class="progress-actions">
+            <button id="generate-quiz" class="btn btn-primary">Generate Targeted Quiz</button>
+            <button id="update-plan" class="btn btn-secondary">Update Study Plan</button>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const syllabusId = urlParams.get('syllabus_id');
+        const dateRange = document.getElementById('date-range');
+        
+        const progressLoading = document.getElementById('progress-loading');
+        const progressContainer = document.getElementById('progress-container');
+        const progressSubject = document.getElementById('progress-subject');
+        const overallMastery = document.getElementById('overall-mastery');
+        const overallMasteryBar = document.getElementById('overall-mastery-bar');
+        const quizzesCompleted = document.getElementById('quizzes-completed');
+        const studyHours = document.getElementById('study-hours');
+        const topicsMastered = document.getElementById('topics-mastered');
+        const masteryChart = document.getElementById('mastery-chart');
+        const topicMasteryList = document.getElementById('topic-mastery-list');
+        const weakTopicsList = document.getElementById('weak-topics-list');
+        const generateQuizBtn = document.getElementById('generate-quiz');
+        const updatePlanBtn = document.getElementById('update-plan');
+        
+        if (!syllabusId) {
+            showError('No syllabus ID provided. Please go back and select a syllabus.');
+            return;
+        }
+        
+        loadProgress(syllabusId, dateRange.value);
+        
+        dateRange.addEventListener('change', function() {
+            loadProgress(syllabusId, this.value);
+        });
+        
+        generateQuizBtn.addEventListener('click', function() {
+            window.location.href = `/quiz?syllabus_id=${syllabusId}`;
+        });
+        
+        updatePlanBtn.addEventListener('click', function() {
+            window.location.href = `/syllabus?id=${syllabusId}`;
+        });
+        
+        function loadProgress(syllabusId, days) {
+            progressLoading.classList.remove('hidden');
+            progressContainer.classList.add('hidden');
+            
+            fetch(`/study/progress/get?syllabus_id=${syllabusId}&days=${days}`)
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Failed to load progress data');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    handleProgressData(data);
+                    progressLoading.classList.add('hidden');
+                    progressContainer.classList.remove('hidden');
+                })
+                .catch(error => {
+                    showError(error.message);
+                    progressLoading.classList.add('hidden');
+                });
+        }
+        
+        function handleProgressData(data) {
+            progressSubject.textContent = `${data.subject} Progress`;
+            
+            overallMastery.textContent = `${data.overall_mastery}%`;
+            overallMasteryBar.style.width = `${data.overall_mastery}%`;
+            quizzesCompleted.textContent = data.quizzes_completed;
+            studyHours.textContent = data.study_hours;
+            topicsMastered.textContent = data.topics_mastered;
+            
+            weakTopicsList.innerHTML = '';
+            
+            if (data.weak_topics.length === 0) {
+                weakTopicsList.innerHTML = '<p class="text-success">No weak topics identified. Great job!</p>';
+            } else {
+                data.weak_topics.forEach(topic => {
+                    const mastery = data.topic_mastery[topic] || 0;
+                    const topicEl = document.createElement('div');
+                    topicEl.className = 'weak-topic';
+                    topicEl.innerHTML = `
+                        <span>${topic}</span>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar bg-warning" style="width: ${mastery}%">
+                                ${mastery}%
+                            </div>
+                        </div>
+                    `;
+                    weakTopicsList.appendChild(topicEl);
+                });
+            }
+            
+            topicMasteryList.innerHTML = '';
+            
+            Object.entries(data.topic_mastery).forEach(([topic, mastery]) => {
+                const topicEl = document.createElement('div');
+                topicEl.className = 'topic-mastery-item';
+                
+                let colorClass = 'bg-success';
+                if (mastery < 60) {
+                    colorClass = 'bg-danger';
+                } else if (mastery < 80) {
+                    colorClass = 'bg-warning';
+                }
+                
+                topicEl.innerHTML = `
+                    <span>${topic}</span>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar ${colorClass}" style="width: ${mastery}%">
+                            ${mastery}%
+                        </div>
+                    </div>
+                `;
+                topicMasteryList.appendChild(topicEl);
+            });
+            
+            createMasteryChart(data.chart_data);
+        }
+        
+        function createMasteryChart(chartData) {
+            masteryChart.innerHTML = '';
+            
+            if (chartData.length === 0) {
+                masteryChart.innerHTML = '<div class="chart-message">No data available for chart</div>';
+                return;
+            }
+            
+            const canvas = document.createElement('canvas');
+            canvas.id = 'mastery-chart-canvas';
+            masteryChart.appendChild(canvas);
+            
+            const topics = [...new Set(chartData.map(item => item.topic))];
+            const datasets = topics.map((topic, index) => {
+                const topicData = chartData.filter(item => item.topic === topic);
+                
+                const hue = (index * 137) % 360;
+                const color = `hsl(${hue}, 70%, 60%)`;
+                
+                return {
+                    label: topic,
+                    data: topicData.map(item => ({
+                        x: new Date(item.date),
+                        y: item.mastery
+                    })),
+                    borderColor: color,
+                    backgroundColor: color + '33',
+                    fill: false,
+                    tension: 0.4
+                };
+            });
+            
+            new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
+                        y: {
+                            min: 0,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Mastery Level (%)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function showError(message) {
+            progressLoading.classList.add('hidden');
+            progressContainer.classList.remove('hidden');
+            progressContainer.innerHTML = `<div class="error-message">${message}</div>`;
+        }
+    });
+</script>
+{% endblock %}
